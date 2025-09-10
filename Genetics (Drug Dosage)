@@ -1,0 +1,69 @@
+import random
+import math
+
+def fitness_function(dosage):
+    return math.exp(-((dosage - 60) ** 2) / 100)
+
+POP_SIZE = 20
+MUTATION_RATE = 0.1
+CROSSOVER_RATE = 0.8
+GENERATIONS = 15
+DOSAGE_RANGE = (0, 100)
+
+def create_population():
+    return [random.uniform(*DOSAGE_RANGE) for _ in range(POP_SIZE)]
+
+def evaluate(population):
+    return [fitness_function(ind) for ind in population]
+
+def select(population, fitnesses):
+    total_fitness = sum(fitnesses)
+    pick = random.uniform(0, total_fitness)
+    current = 0
+    for ind, fit in zip(population, fitnesses):
+        current += fit
+        if current > pick:
+            return ind
+
+def crossover(parent1, parent2):
+    if random.random() < CROSSOVER_RATE:
+        alpha = random.random()
+        return alpha * parent1 + (1 - alpha) * parent2
+    return parent1
+
+def mutate(individual):
+    if random.random() < MUTATION_RATE:
+        mutation = random.uniform(-5, 5)
+        individual += mutation
+        individual = max(DOSAGE_RANGE[0], min(DOSAGE_RANGE[1], individual))
+    return individual
+
+def genetic_algorithm():
+    population = create_population()
+    best_solution = None
+    best_fitness = 0
+
+    for gen in range(GENERATIONS):
+        fitnesses = evaluate(population)
+        new_population = []
+
+        for _ in range(POP_SIZE):
+            parent1 = select(population, fitnesses)
+            parent2 = select(population, fitnesses)
+            child = crossover(parent1, parent2)
+            child = mutate(child)
+            new_population.append(child)
+
+        population = new_population
+
+        gen_best = max(population, key=fitness_function)
+        gen_best_fit = fitness_function(gen_best)
+        if gen_best_fit > best_fitness:
+            best_solution = gen_best
+            best_fitness = gen_best_fit
+
+        print(f"Generation {gen+1}: Best Dosage = {gen_best:.2f}, Effectiveness = {gen_best_fit:.4f}")
+
+    print("\n Final Best Dosage:", round(best_solution, 2))
+    print("Estimated Effectiveness:", round(best_fitness, 4))
+genetic_algorithm()
