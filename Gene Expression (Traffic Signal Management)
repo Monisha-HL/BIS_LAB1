@@ -1,0 +1,59 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Simulated traffic data: vehicles arriving per minute at each direction
+traffic_flow = {
+    'North': np.random.randint(5, 20, size=10),
+    'South': np.random.randint(5, 20, size=10),
+    'East':  np.random.randint(5, 20, size=10),
+    'West':  np.random.randint(5, 20, size=10)
+}
+
+# Gene Expression: each individual is [green_N, green_S, green_E, green_W]
+def create_individual():
+    return np.random.randint(10, 60, size=4)  # green light durations in seconds
+
+# Fitness: lower total wait time is better
+def fitness(individual):
+    wait_time = 0
+    for i, direction in enumerate(['North', 'South', 'East', 'West']):
+        flow = traffic_flow[direction]
+        green_time = individual[i]
+        wait = np.sum(np.maximum(flow - green_time / 5, 0))  # assume 5 cars pass per 10 sec
+        wait_time += wait
+    return -wait_time  # negative because we want to minimize
+
+# Evolution loop
+population_size = 20
+generations = 50
+mutation_rate = 0.1
+
+population = [create_individual() for _ in range(population_size)]
+
+for gen in range(generations):
+    scores = [fitness(ind) for ind in population]
+    top_indices = np.argsort(scores)[-5:]
+    top_individuals = [population[i] for i in top_indices]
+
+    new_population = []
+    for _ in range(population_size):
+        idx = np.random.choice(5, 2, replace=False)
+        p1, p2 = top_individuals[idx[0]], top_individuals[idx[1]]
+        crossover = np.random.randint(1, 4)
+        child = np.concatenate([p1[:crossover], p2[crossover:]])
+        if np.random.rand() < mutation_rate:
+            child[np.random.randint(0, 4)] = np.random.randint(10, 60)
+        new_population.append(child)
+
+    population = new_population
+
+# Show best result
+best = population[np.argmax([fitness(ind) for ind in population])]
+directions = ['North', 'South', 'East', 'West']
+
+plt.bar(directions, best)
+plt.title("Optimized Green Light Durations (sec)")
+plt.ylabel("Duration")
+plt.show()
+
+print("Best signal timings:", dict(zip(directions, best)))
