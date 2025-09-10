@@ -1,0 +1,64 @@
+import numpy as np
+
+def sphere_function(position):
+    return np.sum(position ** 2)
+
+class Particle:
+    def __init__(self, dim, bounds):
+        self.position = np.random.uniform(bounds[0], bounds[1], dim)
+        self.velocity = np.random.uniform(-1, 1, dim)
+        self.best_position = self.position.copy()
+        self.best_value = sphere_function(self.position)
+
+    def update_velocity(self, global_best, inertia, cognitive, social):
+        r1 = np.random.rand(len(self.position))
+        r2 = np.random.rand(len(self.position))
+        cognitive_component = cognitive * r1 * (self.best_position - self.position)
+        social_component = social * r2 * (global_best - self.position)
+        self.velocity = inertia * self.velocity + cognitive_component + social_component
+
+    def update_position(self, bounds):
+        self.position += self.velocity
+        #Clamp position within bounds
+        self.position = np.clip(self.position, bounds[0], bounds[1])
+        #Update personal best if needed
+        current_value = sphere_function(self.position)
+        if current_value < self.best_value:
+            self.best_value = current_value
+            self.best_position = self.position.copy()
+
+def pso(num_particles, dim, bounds, inertia, cognitive, social, max_iter):
+    #Initialize swarm
+    swarm = [Particle(dim, bounds) for _ in range(num_particles)]
+    global_best_position = swarm[0].best_position.copy()
+    global_best_value = swarm[0].best_value
+
+    for particle in swarm:
+        if particle.best_value < global_best_value:
+            global_best_value = particle.best_value
+            global_best_position = particle.best_position.copy()
+
+    for iteration in range(max_iter):
+        for particle in swarm:
+            particle.update_velocity(global_best_position, inertia, cognitive, social)
+            particle.update_position(bounds)
+
+            if particle.best_value < global_best_value:
+                global_best_value = particle.best_value
+                global_best_position = particle.best_position.copy()
+
+        print(f"Iteration {iteration+1}/{max_iter}, Best Value: {global_best_value:.6f}")
+
+    return global_best_position, global_best_value
+
+num_particles = 30
+dim = 2  # Number of dimensions
+bounds = (-10, 10)
+inertia = 0.7
+cognitive = 1.5
+social = 1.5
+max_iter = 25
+
+best_pos, best_val = pso(num_particles, dim, bounds, inertia, cognitive, social, max_iter)
+print("\n Best Position Found:", best_pos)
+print(" Minimum Value:", best_val)
