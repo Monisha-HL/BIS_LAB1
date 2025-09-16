@@ -1,0 +1,76 @@
+import numpy as np
+cities = {
+    0: (50, 50),  # Depot
+    1: (20, 30),
+    2: (60, 20),
+    3: (80, 80),
+    4: (30, 70)
+}
+demands = {1: 10, 2: 15, 3: 20, 4: 5}
+vehicle_capacity = 30
+num_ants = 10
+alpha = 1.0
+beta = 2.0
+rho = 0.5
+num_iterations = 100
+
+num_nodes = len(cities)
+pheromone = np.ones((num_nodes, num_nodes))
+distance = np.zeros((num_nodes, num_nodes))
+
+for i in range(num_nodes):
+    for j in range(num_nodes):
+        if i != j:
+            distance[i][j] = np.linalg.norm(np.array(cities[i]) - np.array(cities[j]))
+
+def select_next_city(current, visited, remaining_capacity):
+    probabilities = []
+    for j in range(1, num_nodes):
+        if j not in visited and demands[j] <= remaining_capacity:
+            tau = pheromone[current][j] ** alpha
+            eta = (1 / distance[current][j]) ** beta
+            probabilities.append((j, tau * eta))
+    if not probabilities:
+        return 0  # Return to depot
+    total = sum(p for _, p in probabilities)
+    probs = [(city, p / total) for city, p in probabilities]
+    cities_list, probs_list = zip(*probs)
+    return np.random.choice(cities_list, p=probs_list)
+
+def update_pheromones(routes, costs):
+    global pheromone
+    pheromone *= (1 - rho)
+    for route, cost in zip(routes, costs):
+        for i in range(len(route) - 1):
+            pheromone[route[i]][route[i+1]] += 1.0 / cost
+
+best_route = None
+best_cost = float('inf')
+
+for _ in range(num_iterations):
+    all_routes = []
+    all_costs = []
+    for _ in range(num_ants):
+        route = [0]
+        visited = set()
+        capacity = vehicle_capacity
+        while len(visited) < len(demands):
+            next_city = select_next_city(route[-1], visited, capacity)
+            if next_city == 0:
+                route.append(0)
+                capacity = vehicle_capacity
+            else:
+                route.append(next_city)
+                visited.add(next_city)
+                capacity -= demands[next_city]
+        route.append(0)
+        cost = sum(distance[route[i]][route[i+1]] for i in range(len(route)-1))
+        all_routes.append(route)
+        all_costs.append(cost)
+        if cost < best_cost:
+            best_cost = cost
+            best_route = route
+    update_pheromones(all_routes, all_costs)
+
+print("Best route:", best_route)
+print("Best cost:", best_cost)
