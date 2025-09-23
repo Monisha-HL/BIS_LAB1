@@ -1,0 +1,73 @@
+import numpy as np
+import random
+
+# Parameters
+num_nests = 20
+num_nurses = 10
+num_shifts = 7  # e.g., one week
+pa = 0.25       # discovery rate
+alpha = 1       # step size
+max_generations = 25
+
+#Generate initial population of schedules
+def initialize_nests():
+    return [np.random.randint(0, 2, (num_nurses, num_shifts)) for _ in range(num_nests)]
+
+#Fitness function:reward - penalty
+def fitness(schedule):
+    penalty = 0
+    reward = 0
+
+    #Constraint:no nurse works more than 5 shifts
+    for nurse_schedule in schedule:
+        shifts_worked = np.sum(nurse_schedule)
+        if shifts_worked > 5:
+            penalty += (shifts_worked - 5)
+
+    #Reward:balanced workload
+    shift_totals = np.sum(schedule, axis=0)
+    reward += -np.std(shift_totals)  
+
+    return reward - penalty
+
+#Lévy flight step
+def levy_flight(Lambda=1.5):
+    u = np.random.normal(0, 1)
+    v = np.random.normal(0, 1)
+    step = u / (abs(v) ** (1 / Lambda))
+    return step
+
+def generate_new_solution(old_schedule):
+    new_schedule = old_schedule.copy()
+    for i in range(num_nurses):
+        for j in range(num_shifts):
+            if random.random() < 0.5:
+                new_schedule[i][j] = int((old_schedule[i][j] + alpha * levy_flight()) % 2)
+    return new_schedule
+
+def cuckoo_search():
+    nests = initialize_nests()
+    best_schedule = nests[0]
+    best_fitness = fitness(best_schedule)
+
+    for gen in range(max_generations):
+        for i in range(num_nests):
+            new_schedule = generate_new_solution(nests[i])
+            if fitness(new_schedule) > fitness(nests[i]):
+                nests[i] = new_schedule
+
+        for i in range(num_nests):
+            if random.random() < pa:
+                nests[i] = np.random.randint(0, 2, (num_nurses, num_shifts))
+
+        for schedule in nests:
+            score = fitness(schedule)
+            if score > best_fitness:
+                best_fitness = score
+                best_schedule = schedule
+
+    return best_schedule, best_fitness
+
+optimal_schedule, score = cuckoo_search()
+print("Optimal Nurse Schedule:\n", optimal_schedule)
+print("Fitness Score:", score)
