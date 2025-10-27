@@ -1,0 +1,76 @@
+import numpy as np
+
+num_assets = 5
+risk_free_rate = 0.01
+
+expected_returns = np.array([0.12, 0.10, 0.15, 0.09, 0.11])
+cov_matrix = np.array([
+    [0.005, -0.010, 0.004, -0.002, 0.003],
+    [-0.010, 0.040, -0.002, 0.004, -0.005],
+    [0.004, -0.002, 0.023, 0.002, 0.001],
+    [-0.002, 0.004, 0.002, 0.018, -0.003],
+    [0.003, -0.005, 0.001, -0.003, 0.015]
+])
+
+def fitness(weights):
+    weights = np.array(weights)
+    portfolio_return = np.dot(weights, expected_returns)
+    portfolio_std = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
+    if portfolio_std == 0:
+        return -np.inf
+    sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_std
+    return sharpe_ratio
+
+def initialize_wolves(num_wolves, num_assets):
+    wolves = []
+    for _ in range(num_wolves):
+        weights = np.random.rand(num_assets)
+        weights /= np.sum(weights)
+        wolves.append(weights)
+    return wolves
+
+def gwo_portfolio_optimization(num_wolves=20, max_iter=100):
+    wolves = initialize_wolves(num_wolves, num_assets)
+
+    for iter in range(max_iter):
+        a = 2 - iter * (2 / max_iter)
+        wolves.sort(key=fitness, reverse=True)
+        alpha, beta, delta = wolves[0], wolves[1], wolves[2]
+
+        new_wolves = []
+        for i in range(num_wolves):
+            wolf = wolves[i].copy()
+            for j in range(num_assets):
+                r1, r2 = np.random.rand(), np.random.rand()
+                A1 = 2 * a * r1 - a
+                C1 = 2 * r2
+                D_alpha = abs(C1 * alpha[j] - wolf[j])
+                X1 = alpha[j] - A1 * D_alpha
+
+                r1, r2 = np.random.rand(), np.random.rand()
+                A2 = 2 * a * r1 - a
+                C2 = 2 * r2
+                D_beta = abs(C2 * beta[j] - wolf[j])
+                X2 = beta[j] - A2 * D_beta
+
+                r1, r2 = np.random.rand(), np.random.rand()
+                A3 = 2 * a * r1 - a
+                C3 = 2 * r2
+                D_delta = abs(C3 * delta[j] - wolf[j])
+                X3 = delta[j] - A3 * D_delta
+
+                wolf[j] = (X1 + X2 + X3) / 3
+
+            wolf = np.clip(wolf, 0, 1)
+            wolf /= np.sum(wolf)
+            new_wolves.append(wolf)
+
+        wolves = new_wolves
+
+    best_weights = wolves[0]
+    best_sharpe = fitness(best_weights)
+    return best_weights, best_sharpe
+
+best_weights, best_sharpe = gwo_portfolio_optimization()
+print("Optimal Weights:", np.round(best_weights, 3))
+print("Best Sharpe Ratio:", round(best_sharpe, 3))
