@@ -1,0 +1,68 @@
+import random
+import copy
+
+jobs = {
+    'J1': [('M1', 3), ('M2', 2)],
+    'J2': [('M2', 2), ('M1', 4)]
+}
+
+machines = ['M1', 'M2']
+GRID_ROWS = 3
+GRID_COLS = 3
+NUM_CELLS = GRID_ROWS * GRID_COLS
+MAX_ITERATIONS = 100
+
+def generate_random_schedule(jobs):
+    schedule = []
+    for job_id, operations in jobs.items():
+        ops = [(job_id, m, t) for m, t in operations]
+        random.shuffle(ops)
+        schedule.extend(ops)
+    random.shuffle(schedule)
+    return schedule
+
+def compute_makespan(schedule):
+    machine_time = {m: 0 for m in machines}
+    job_time = {j: 0 for j in jobs}
+    for job_id, machine, time in schedule:
+        start_time = max(machine_time[machine], job_time[job_id])
+        end_time = start_time + time
+        machine_time[machine] = end_time
+        job_time[job_id] = end_time
+    return max(job_time.values())
+
+def get_neighbors(index, rows, cols):
+    neighbors = []
+    row, col = divmod(index, cols)
+    for dr in [-1, 0, 1]:
+        for dc in [-1, 0, 1]:
+            if dr == 0 and dc == 0:
+                continue
+            r, c = row + dr, col + dc
+            if 0 <= r < rows and 0 <= c < cols:
+                neighbors.append(r * cols + c)
+    return neighbors
+
+def mutate_schedule(schedule):
+    new_schedule = copy.deepcopy(schedule)
+    i, j = random.sample(range(len(new_schedule)), 2)
+    new_schedule[i], new_schedule[j] = new_schedule[j], new_schedule[i]
+    return new_schedule
+
+cells = [generate_random_schedule(jobs) for _ in range(NUM_CELLS)]
+fitness_values = [compute_makespan(cell) for cell in cells]
+
+for iteration in range(MAX_ITERATIONS):
+    new_cells = []
+    for i in range(NUM_CELLS):
+        neighbors = get_neighbors(i, GRID_ROWS, GRID_COLS)
+        best_neighbor = min(neighbors, key=lambda idx: fitness_values[idx])
+        new_schedule = mutate_schedule(cells[best_neighbor])
+        new_cells.append(new_schedule)
+    cells = new_cells
+    fitness_values = [compute_makespan(cell) for cell in cells]
+
+best_index = fitness_values.index(min(fitness_values))
+best_schedule = cells[best_index]
+print("Best schedule found with makespan:", fitness_values[best_index])
+print("Schedule:", best_schedule)
